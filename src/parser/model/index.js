@@ -465,10 +465,14 @@ const Block = class {
     }
 
     for (const swaStart of swaStarts) {
+      const swaLabel = this.items[swaStart - 1].payload;
+      const attPrefix = `attribute/${swaLabel}/`;
       let pos = swaStart;
-      let tokens = [];
+      let content = [];
       let scopes = [];
 
+      // Content (tokens and any nested spans) runs up to the first attribute scope of this span,
+      // which is followed by the rest of the attribute scopes
       // eslint-disable-next-line no-constant-condition
       while (true) {
         if (pos >= this.items.length) {
@@ -477,20 +481,20 @@ const Block = class {
 
         const item = this.items[pos];
 
-        if (item.type === 'token') {
-          tokens.push(item);
-        } else if (
-          item.subType === 'start' &&
-          item.payload.startsWith('attribute/spanWithAtts')
-        ) {
+        if (item.subType === 'start' && item.payload.startsWith(attPrefix)) {
           scopes.push(item);
-        } else {
+        } else if (
+          scopes.length !== 0 ||
+          (item.subType === 'end' && item.payload === swaLabel)
+        ) {
           break;
+        } else {
+          content.push(item);
         }
         pos++;
       }
 
-      if (tokens.length !== 0 && scopes.length !== 0) {
+      if (content.length !== 0 && scopes.length !== 0) {
         let pos = swaStart;
 
         for (const s of scopes) {
@@ -498,8 +502,8 @@ const Block = class {
           pos++;
         }
 
-        for (const t of tokens) {
-          this.items[pos] = t;
+        for (const c of content) {
+          this.items[pos] = c;
           pos++;
         }
       }

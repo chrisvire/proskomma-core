@@ -113,6 +113,15 @@ const Sequence = class {
     let inTable = false;
 
     for (const [blockNo, block] of this.blocks.entries()) {
+      if (inTable && block.bs.payload === 'blockTag/tr' && block.bg.length > 0) {
+        // Block grafts (eg a heading) between rows split the table in two
+        inTable = false;
+        this.blocks[blockNo - 1].items.push({
+          type: 'scope',
+          subType: 'end',
+          payload: labelForScope('table', []),
+        });
+      }
       if (!inTable && block.bs.payload === 'blockTag/tr') {
         inTable = true;
         this.blocks[blockNo].items.unshift({

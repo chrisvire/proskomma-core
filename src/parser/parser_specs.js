@@ -238,6 +238,15 @@ const specs = (pt) => [
         // ROW - Make new block
         contexts: [['startTag', 'tagName', ['tr']]],
         parser: {
+            before: (parser) => {
+                // Rows stay in the current sequence (eg tables in introductions),
+                // but a heading is a single paragraph, so a row after one belongs to
+                // the main-like sequence, just as a \p would.
+                if (parser.current.sequence.type === 'heading') {
+                    parser.closeActiveScopes('baseSequenceChange');
+                    parser.changeBaseSequence({baseSequenceType: 'mainLike'});
+                }
+            },
             newBlock: true,
             newScopes: [],
         },

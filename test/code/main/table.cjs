@@ -117,3 +117,40 @@ test(
     }
   },
 );
+
+const pk6 = pkWithDoc('../test_data/usfm/table_after_heading.usfm', {
+  lang: 'eng',
+  abbr: 'hello',
+})[0];
+
+test(
+  `USFM table directly after heading (${testGroup})`,
+  async function (t) {
+    try {
+      t.plan(7);
+      const result = await pk6.gqlQuery(
+        `{ documents { sequences { type nBlocks } mainSequence { blocks { bs { payload } bg { subType } items { type subType payload } } } } }`,
+      );
+      t.equal(result.errors, undefined);
+      const doc = result.data.documents[0];
+      const headings = doc.sequences.filter(s => s.type === 'heading');
+      t.same(headings.map(s => s.nBlocks), [1, 1, 1], 'rows are not added to heading sequences');
+      const blocks = doc.mainSequence.blocks;
+      t.equal(blocks.length, 13, 'all rows are in the main sequence');
+      t.ok(blocks.every(b => b.bs.payload === 'blockTag/tr'), 'all main blocks are rows');
+      t.same(
+        blocks.map((b, n) => [n, b.bg.length]).filter(nb => nb[1] > 0),
+        [[0, 2], [8, 1]],
+        'headings are grafted onto the first row of each table',
+      );
+      const tableScopes = subType => blocks
+        .map((b, n) => [n, b.items.filter(i => i.type === 'scope' && i.subType === subType && i.payload === 'table').length])
+        .filter(nb => nb[1] > 0)
+        .map(nb => nb[0]);
+      t.same(tableScopes('start'), [0, 8], 'two tables start');
+      t.same(tableScopes('end'), [7, 12], 'two tables end');
+    } catch (err) {
+      console.log(err);
+    }
+  },
+);
